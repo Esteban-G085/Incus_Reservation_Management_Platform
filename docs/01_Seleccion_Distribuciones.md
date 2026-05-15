@@ -2,7 +2,7 @@
 
 **Fecha:** Mayo 2026  
 **Proyecto:** Plataforma de Gestión de Reservas - Laboratorio Académico sobre Incus  
-**Versión:** Con implementación real (Etapa 1 completada)  
+**Versión:** Con implementación real
 
 ---
 
