@@ -71,25 +71,24 @@ Windows 11
 
 ```
 .
-├── docs/
-│   ├── etapa1_infraestructura_incus.md        # Infraestructura base (Etapa 1)
-│   ├── etapa1_infraestructura_incus_v2.md     # Versión mejorada con lecciones
-│   └── etapa2_iac_opentofu.md               # Infraestructura como Código (Etapa 2)
-├── tofu/                                      # Archivos .tf de OpenTofu
-│   ├── versions.tf
-│   ├── provider.tf
-│   ├── variables.tf
-│   ├── main.tf
-│   └── outputs.tf
-├── ansible/                                   # (pendiente)
-│   ├── inventory/
-│   └── playbooks/
-├── scripts/
-│   ├── setup-lab.sh                           # Creación completa del laboratorio
-│   ├── start-lab.sh                           # Arranque ordenado (OVN + contenedores)
-│   ├── stop-lab.sh                            # Apagado limpio
-│   └── shutdown-lab.sh                        # Alias legacy de stop-lab.sh
-└── README.md
+├── docs/                              # Documentación de etapas
+│   ├── etapa1_infraestructura_incus.md    # Infraestructura base (Etapa 1)
+│   └── etapa2_iac_opentofu.md           # Infraestructura como Código (Etapa 2)
+│
+├── lab-reservas/                      # Proyecto principal
+│   ├── scripts/
+│   │   ├── setup-lab.sh               # Creación completa del laboratorio
+│   │   ├── start-lab.sh               # Arranque ordenado (OVN + contenedores)
+│   │   └── stop-lab.sh                # Apagado limpio
+│   │
+│   └── tofu/                          # Archivos .tf de OpenTofu
+│       ├── versions.tf
+│       ├── provider.tf
+│       ├── variables.tf
+│       ├── main.tf
+│       └── outputs.tf
+│
+└── README.md                 
 ```
 
 ---
