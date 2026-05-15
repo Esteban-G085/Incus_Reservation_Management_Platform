@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# stop-lab.sh — Apagado limpio del laboratorio Incus
+# stop-lab.sh — Apagado limpio del laboratorio Incus (CORREGIDO)
 # Proyecto: Plataforma de Gestión de Reservas
 # =============================================================================
 
@@ -24,13 +24,14 @@ log_section() { echo -e "\n${CYAN}═══════════════�
                 echo -e "${CYAN}══════════════════════════════════════════${NC}"; }
 
 # -----------------------------------------------------------------------------
-# PASO 1 — Detener contenedores
+# PASO 1 — Detener contenedores en orden inverso de dependencias
 # -----------------------------------------------------------------------------
 log_section "PASO 1 — Deteniendo contenedores"
 
-CONTAINERS=("node-control" "app-api" "app-core" "db-postgres" "monitoring" "ceph-node")
+# Orden inverso: aplicación primero, infraestructura después
+CONTAINERS_ORDER=("node-control" "app-api" "app-core" "monitoring" "db-postgres" "ceph-node")
 
-for container in "${CONTAINERS[@]}"; do
+for container in "${CONTAINERS_ORDER[@]}"; do
   if sudo incus info "$container" &>/dev/null; then
     if sudo incus info "$container" | grep -q "Status: RUNNING"; then
       log_info "Deteniendo '$container'..."

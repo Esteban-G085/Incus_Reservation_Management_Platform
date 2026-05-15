@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# setup-lab.sh — Infraestructura base del laboratorio Incus
+# setup-lab.sh — Infraestructura base del laboratorio Incus (CORREGIDO)
 # Proyecto: Plataforma de Gestión de Reservas
 # Etapa 1: Red OVN + Perfiles + Volúmenes + Contenedores
 # =============================================================================
@@ -187,6 +187,7 @@ for profile in node-control app-api app-core db-postgres monitoring ceph-node; d
     log_ok "Perfil '$profile' creado (CPU: $cpu, RAM: $memory)"
   fi
 
+  # CORRECCIÓN: Verificar y agregar disco root de forma explícita
   if ! sudo incus profile device show "$profile" 2>/dev/null | grep -q "^root:"; then
     sudo incus profile device add "$profile" root disk path=/ pool=default size="$disk"
     log_ok "Disco asignado a '$profile' ($disk)"

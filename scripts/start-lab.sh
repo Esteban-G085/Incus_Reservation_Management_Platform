@@ -1,6 +1,6 @@
 #!/bin/bash
 # =============================================================================
-# start-lab.sh — Arranque del laboratorio Incus
+# start-lab.sh — Arranque del laboratorio Incus (CORREGIDO)
 # Proyecto: Plataforma de Gestión de Reservas
 # =============================================================================
 
@@ -25,6 +25,22 @@ log_section() { echo -e "\n${CYAN}═══════════════�
                 echo -e "${CYAN}══════════════════════════════════════════${NC}"; }
 
 # -----------------------------------------------------------------------------
+# PASO 0 — Verificar dependencias
+# -----------------------------------------------------------------------------
+log_section "PASO 0 — Verificando dependencias"
+
+log_info "Verificando Open vSwitch..."
+if ! sudo systemctl is-active --quiet ovsdb-server; then
+  log_warn "ovsdb-server no está corriendo. Iniciando..."
+  sudo systemctl start ovsdb-server
+fi
+if ! sudo systemctl is-active --quiet ovs-vswitchd; then
+  log_warn "ovs-vswitchd no está corriendo. Iniciando..."
+  sudo systemctl start ovs-vswitchd
+fi
+log_ok "Open vSwitch activo"
+
+# -----------------------------------------------------------------------------
 # PASO 1 — Iniciar OVN
 # -----------------------------------------------------------------------------
 log_section "PASO 1 — Iniciando OVN"
@@ -46,13 +62,14 @@ else
 fi
 
 # -----------------------------------------------------------------------------
-# PASO 2 — Iniciar contenedores
+# PASO 2 — Iniciar contenedores en orden de dependencias
 # -----------------------------------------------------------------------------
 log_section "PASO 2 — Iniciando contenedores"
 
-CONTAINERS=("node-control" "app-api" "app-core" "db-postgres" "monitoring" "ceph-node")
+# Orden: infraestructura primero, aplicación después
+CONTAINERS_ORDER=("ceph-node" "db-postgres" "monitoring" "app-core" "app-api" "node-control")
 
-for container in "${CONTAINERS[@]}"; do
+for container in "${CONTAINERS_ORDER[@]}"; do
   if sudo incus info "$container" &>/dev/null; then
     if sudo incus info "$container" | grep -q "Status: RUNNING"; then
       log_warn "'$container' ya estaba corriendo"
