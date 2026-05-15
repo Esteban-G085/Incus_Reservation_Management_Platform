@@ -118,16 +118,5 @@ Windows 11
 
 ---
 
-## 🐛 Problemas Conocidos y Soluciones
-
-| Error | Causa | Solución |
-|-------|-------|---------|
-| `Network not allowed in project` | Proyecto default restringido | `sudo incus project set default features.networks=true` |
-| `ovn-ctl: command not found` | Binario fuera del PATH | Usar `/usr/share/ovn/scripts/ovn-ctl` |
-| `No root device could be found` | Perfiles sin disco asignado | Agregar device root con `size` explícito |
-| `Missing ipv4.ovn.ranges` | Bridge sin rango OVN | Definir `ipv4.ovn.ranges` y `ipv4.dhcp.ranges` separados |
-| OVN muerto tras reiniciar WSL2 | WSL2 no persiste servicios | `startup-lab.sh` levanta OVN manualmente al inicio |
-
----
 
 *Proyecto académico — Mayo 2026*
