@@ -35,15 +35,15 @@ Windows 11
 
 ### Recursos por nodo
 
-| Nodo | CPUs | RAM | Disco | IP |
-|------|:----:|:---:|:-----:|-----|
-| node-control | 1 | 256 MiB | 4 GiB | 10.10.0.2 |
-| app-api | 1 | 768 MiB | 8 GiB | 10.10.0.3 |
-| app-core | 1 | 768 MiB | 8 GiB | 10.10.0.4 |
-| db-postgres | 2 | 2 GiB | 20 GiB | 10.10.0.5 |
-| monitoring | 2 | 1.5 GiB | 10 GiB | 10.10.0.6 |
-| ceph-node | 1 | 512 MiB | 15 GiB | 10.10.0.7 |
-| **Total** | **8** | **~5.75 GiB** | **65 GiB** | — |
+| Nodo | CPUs | RAM | Disco |
+|------|:----:|:---:|:-----:|
+| node-control | 1 | 256 MiB | 4 GiB |
+| app-api | 1 | 768 MiB | 8 GiB |
+| app-core | 1 | 768 MiB | 8 GiB |
+| db-postgres | 2 | 2 GiB | 20 GiB |
+| monitoring | 2 | 1.5 GiB | 10 GiB |
+| ceph-node | 1 | 512 MiB | 15 GiB |
+| **Total** | **8** | **~5.75 GiB** | **65 GiB** |
 
 ---
 
