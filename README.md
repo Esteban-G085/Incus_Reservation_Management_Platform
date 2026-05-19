@@ -258,7 +258,6 @@ Detiene servicios permitiendo la bajada a disco y evitando corrupci贸n: `api` 鈫
 |---|---|
 | `infraestructura.md` | Justificaci贸n t茅cnica de Debian 13, matriz de decisi贸n, y detalles minuciosos del funcionamiento de cada Script. (Documento Base) |
 | `choices.md` | Log de todos los cambios con fecha, archivos afectados y raz贸n |
-| `memory.md` | Contexto general y decisiones. |
 
 ---
 
