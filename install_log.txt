@@ -1,0 +1,16 @@
+# Incus installation guide
+
+### OS: Debian over WSL 2 on Win 11
+
+### For WSL 2 Setup
+- `wsl --install Debian --web-download -n` will download and install Debian on WSL 2 without executing it right after the installation proccess' end.
+- `wsl -d Debian` to properly launch the Linux OS
+
+### For Debian setup
+- `sudo apt update`
+- Follow [Zabbly's Incus' installation guide](https://github.com/zabbly/incus?tab=readme-ov-file#installation) to properly obtain both the server and GUI client onto your machine
+- Look for Incus daemon using `sudo systemctl status incus`, there it must say it exists but it is disabled.
+- Run `sudo incus admin init` to initialize the incus daemon, you can also add the `--minimal` flag for rapid setup.
+- Then we'll see the daemon is properly running.
+- Use `sudo systemctl disable incus` to avoid incus to autostart everytime with your OS
+- After that if everything was OK, you could run `sudo incus webui` and as result you will got a link to th Incus UI to open in your default web browser. If incus is running well, you will be auto-logged in and abled to manage all your future instances.

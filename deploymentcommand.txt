@@ -1,0 +1,5 @@
+# Opción A: Despliegue con Git (Recomendado)
+sudo apt update && sudo apt upgrade -y && sudo apt install -y git curl gpg && git clone https://github.com/Esteban-G085/Incus_Reservation_Management_Platform "$HOME/Incus_Reservation_Management_Platform" && cd "$HOME/Incus_Reservation_Management_Platform" && sudo bash scripts/incusinstall.sh
+
+# Opción B: Despliegue sin Git (Descarga del ZIP)
+sudo apt update && sudo apt upgrade -y && sudo apt install -y curl unzip gpg && wget https://github.com/Esteban-G085/Incus_Reservation_Management_Platform/archive/refs/heads/main.zip -O lab.zip && unzip lab.zip && mv Incus_Reservation_Management_Platform-main "$HOME/Incus_Reservation_Management_Platform" && cd "$HOME/Incus_Reservation_Management_Platform" && rm ../lab.zip && sudo bash scripts/incusinstall.sh

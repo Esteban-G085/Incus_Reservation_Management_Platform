@@ -1,304 +1,265 @@
-# 🖥️ Plataforma de Gestión de Reservas sobre Incus
+# Incus_Reservation_Management_Platform
 
-> Laboratorio académico de infraestructura como código: 6 contenedores Debian 13 orquestados con Incus, OVN y automatizados con OpenTofu + Ansible.
-
-![Estado](https://img.shields.io/badge/Etapa%201-Completada-brightgreen)
-![Estado](https://img.shields.io/badge/Etapa%202-Completada-brightgreen)
-![Incus](https://img.shields.io/badge/Incus-6.0.0-blue)
-![Debian](https://img.shields.io/badge/Contenedores-Debian%2013-red)
-![Plataforma](https://img.shields.io/badge/Host-WSL2%20%2B%20Ubuntu%2024.04-orange)
-![OpenTofu](https://img.shields.io/badge/OpenTofu-v1.9.0-purple)
+Laboratorio de microservicios basado en contenedores **Incus** sobre **Debian 13 (Trixie)** para una plataforma de gestión de reservas. Diseñado para entornos académicos con hardware modesto.
 
 ---
 
-## 📋 Descripción
+## Índice
 
-Este proyecto implementa una **plataforma completa de gestión de reservas** (usuarios, recursos, disponibilidad) sobre un clúster de contenedores Incus. El objetivo académico es aprender infraestructura como código aplicando herramientas reales de la industria: Incus, OVN, OpenTofu y Ansible.
-
-El entorno corre sobre **Windows 11 + WSL2 + Ubuntu 24.04** en lugar de un servidor Linux físico, lo que demuestra que el stack completo es reproducible en hardware de desarrollo cotidiano.
+- [Arquitectura](#arquitectura)
+- [Requisitos](#requisitos)
+- [Despliegue](#despliegue)
+- [Estado actual](#estado-actual)
+- [Estructura del repositorio](#estructura-del-repositorio)
+- [Red](#red)
+- [Perfiles de recursos](#perfiles-de-recursos)
+- [Volúmenes persistentes](#volúmenes-persistentes)
+- [Configuración de Servicios (Ansible)](#configuración-de-servicios-ansible)
+- [Pendiente](#pendiente)
+- [Operación del laboratorio](#operación-del-laboratorio)
+- [Documentación de referencia](#documentación-de-referencia)
 
 ---
 
-## 🏗️ Arquitectura
+## Arquitectura
 
 ```
-Windows 11
-└── WSL2
-    └── Ubuntu 24.04  (host Incus)
-        └── Red OVN: lab-net (10.10.0.0/24)
-            ├── node-control   10.10.0.2  — OpenTofu · Ansible · SSH
-            ├── app-api        10.10.0.3  — API REST
-            ├── app-core       10.10.0.4  — Lógica de negocio
-            ├── db-postgres    10.10.0.5  — PostgreSQL
-            ├── monitoring     10.10.0.6  — Prometheus · Grafana
-            └── ceph-node      10.10.0.7  — Almacenamiento distribuido
-```
-
-### Recursos por nodo
-
-| Nodo | CPUs | RAM | Disco |
-|------|:----:|:---:|:-----:|
-| node-control | 1 | 256 MiB | 4 GiB |
-| app-api | 1 | 768 MiB | 8 GiB |
-| app-core | 1 | 768 MiB | 8 GiB |
-| db-postgres | 2 | 2 GiB | 20 GiB |
-| monitoring | 2 | 1.5 GiB | 10 GiB |
-| ceph-node | 1 | 512 MiB | 15 GiB |
-| **Total** | **8** | **~5.75 GiB** | **65 GiB** |
-
----
-
-## 🔧 Stack Tecnológico
-
-| Capa | Tecnología |
-|------|-----------|
-| Sistema base | Windows 11 + WSL2 |
-| Host de contenedores | Ubuntu 24.04 |
-| Orquestador | Incus 6.0.0 |
-| OS de nodos | Debian 13 (trixie) |
-| Red virtual | OVN + Open vSwitch |
-| Storage pool | Incus dir pool |
-| IaC | OpenTofu v1.9.0 *(Etapa 2)* |
-| Configuración | Ansible *(pendiente)* |
-| Base de datos | PostgreSQL 15 |
-| Observabilidad | Prometheus + Grafana |
-| Almacenamiento | Ceph |
-| UI de gestión | Incus UI Web *(opcional)* |
-
----
-
-## 📁 Estructura del Repositorio
-
-```
-.
-├── docs/                              # Documentación de etapas
-│   ├── etapa1_infraestructura_incus.md    # Infraestructura base (Etapa 1)
-│   └── etapa2_iac_opentofu.md           # Infraestructura como Código (Etapa 2)
-│
-├── lab-reservas/                      # Proyecto principal
-│   ├── scripts/
-│   │   ├── setup-lab.sh               # Creación completa del laboratorio
-│   │   ├── start-lab.sh               # Arranque ordenado (OVN + contenedores)
-│   │   └── stop-lab.sh                # Apagado limpio
-│   │
-│   └── tofu/                          # Archivos .tf de OpenTofu
-│       ├── versions.tf
-│       ├── provider.tf
-│       ├── variables.tf
-│       ├── main.tf
-│       └── outputs.tf
-│
-└── README.md                 
+Host: Debian 13 (Trixie) — WSL 2 sobre Windows 11 o Baremetal
+       │
+       └── Incus + OVN
+              │
+              └── lab-net (10.10.0.0/24, sin NAT)
+                     │
+          ┌──────────┼──────────────────────────────┐
+          │          │          │          │         │         │
+        [ctl]      [api]      [core]     [db]      [mon]    [ceph]
+      .0.2/24    .0.3/24    .0.4/24   .0.5/24   .0.6/24  .0.7/24
+   Orquestación  REST API   Lógica  PostgreSQL Prom+Graf  Storage
 ```
 
 ---
 
-## 🚀 Uso Rápido — Scripts
+## Requisitos
 
-### 1. Crear el laboratorio desde cero
+| Componente | Mínimo recomendado |
+|---|---|
+| CPU | 4 cores |
+| RAM | 8 GB (el lab usa ~1.1 GB en idle) |
+| Almacenamiento | 20 GB SSD |
+| OS Host | Debian 13 (Trixie) — físico o WSL 2 |
+
+> Los perfiles definen topes máximos (cgroups), no reservas. Los contenedores solo consumen lo que necesitan.
+
+---
+
+## Despliegue
+
+Puedes obtener los archivos del proyecto de dos formas: mediante Git (automatizado) o de forma manual descargando un ZIP (sin necesidad de Git).
+
+### Opción A: Vía Git (Recomendada)
 
 ```bash
-# Clonar o navegar al repositorio
-cd ~/plataforma-reservas-incus
-
-# Dar permisos de ejecución
-chmod +x scripts/*.sh
-
-# Crear infraestructura completa
-./scripts/setup-lab.sh
+sudo apt update && sudo apt install -y git curl gpg
+git clone https://github.com/Esteban-G085/Incus_Reservation_Management_Platform "$HOME/Incus_Reservation_Management_Platform"
+cd "$HOME/Incus_Reservation_Management_Platform"
 ```
 
-**Qué hace:**
+### Opción B: Forma Manual / Sin Git (Descarga de ZIP)
 
-- Verifica Incus, OVN y Open vSwitch
-- Crea storage pool `default`
-- Crea bridge uplink `incusbr0` y red OVN `lab-net`
-- Crea 6 perfiles con límites de CPU, RAM y disco
-- Crea 5 volúmenes persistentes
-- Lanza 6 contenedores Debian 13
-- Verifica conectividad (ping desde `node-control`)
-
-### 2. Arrancar el laboratorio (después de reiniciar WSL2)
+Si no deseas usar `git`, puedes descargar el código fuente y extraerlo manualmente:
 
 ```bash
-./scripts/start-lab.sh
+sudo apt update && sudo apt install -y curl unzip gpg
+wget https://github.com/Esteban-G085/Incus_Reservation_Management_Platform/archive/refs/heads/main.zip -O lab.zip
+unzip lab.zip
+mv Incus_Reservation_Management_Platform-main "$HOME/Incus_Reservation_Management_Platform"
+cd "$HOME/Incus_Reservation_Management_Platform"
+rm ../lab.zip
 ```
-
-**Qué hace:**
-
-- Verifica e inicia Open vSwitch (si está detenido)
-- Inicia OVN northd y controller
-- Inicia contenedores en orden de dependencias:
-  1. `ceph-node` (almacenamiento base)
-  2. `db-postgres` (base de datos)
-  3. `monitoring` (observabilidad)
-  4. `app-core` (lógica de negocio)
-  5. `app-api` (API REST)
-  6. `node-control` (orquestación)
-- Espera 5 segundos para IPs
-- Verifica conectividad entre nodos
-
-> ⚠️ **Importante:** OVN se detiene cuando WSL2 se apaga. Este script debe ejecutarse siempre después de reiniciar WSL2.
-
-### 3. Apagar el laboratorio
-
-```bash
-./scripts/stop-lab.sh
-```
-
-**Qué hace:**
-
-- Detiene contenedores en orden inverso de dependencias:
-  1. `node-control`
-  2. `app-api`
-  3. `app-core`
-  4. `monitoring`
-  5. `db-postgres`
-  6. `ceph-node`
-- Detiene OVN controller
-- Detiene OVN northd
-- Muestra estado final
-
-> 💡 **Tip:** Es seguro ejecutar este script antes de cerrar WSL2 o apagar Windows. Los datos persistentes se mantienen.
 
 ---
 
-## 🖥️ UI Web de Incus (Opcional)
+### Paso Final: Instalación y Despliegue Automático
 
-Para gestionar contenedores, redes y recursos desde navegador:
-
-### Instalación
+Una vez dentro de la carpeta del proyecto, ejecuta la instalación de Incus y la creación del laboratorio:
 
 ```bash
-sudo apt install -y incus-ui-canonical
+# 1. Instalar Incus (vía Zabbly)
+sudo bash scripts/incusinstall.sh
+
+# 2. Inicializar Incus
+sudo incus admin init --minimal
+
+# 3. Desplegar la infraestructura base (Red, Perfiles, Volúmenes, Contenedores)
+sudo bash scripts/setup-lab.sh
+
+# 4. Configurar Servicios internos (Ansible, PostgreSQL, Prometheus, API)
+sudo bash scripts/setup-services.sh
+
+# 5. Validar el despliegue
+sudo bash scripts/validate.sh
 ```
 
-### Configuración
+Resultado esperado: 6 contenedores en estado `RUNNING` con IPs en `10.10.0.x`, volúmenes atachados, y servicios internos respondiendo adecuadamente.
+
+---
+
+## Estado actual
+
+### Infraestructura base
+
+| Componente | Estado |
+|---|---|
+| Instalación de Incus (Zabbly) | ✅ |
+| Perfiles de recursos (6 perfiles) | ✅ |
+| Red OVN `lab-net` (10.10.0.0/24) | ✅ |
+| Volúmenes persistentes (5 volúmenes) | ✅ |
+| Contenedores Debian 13 (6 nodos) | ✅ |
+| Validación de conectividad | ✅ |
+
+### Servicios configurados con Ansible
+
+| Contenedor | Servicio | Estado |
+|---|---|---|
+| ctl | Orquestación / Ansible base | ✅ |
+| api | Entorno Python / FastAPI | ✅ |
+| core | Entorno Python / FastAPI | ✅ |
+| db | PostgreSQL 15 | ✅ (activo) |
+| mon | Prometheus | ✅ (activo) |
+| mon | Grafana | ✅ (activo) |
+| ceph | Ceph Storage | 🔄 pendiente |
+
+---
+
+## Estructura del repositorio
+
+```text
+Incus_Reservation_Management_Platform/
+├── README.md                   # Este archivo
+├── choices.md                  # Log de cambios técnicos y estado del despliegue
+├── infraestructura.md          # Documentación técnica y desglose de scripts
+├── memory.md                   # Log de contexto y decisiones
+├── setupnetwork.md             # Guía de la estructura teórica OVN
+├── scripts/
+│   ├── incusinstall.sh         # Instalación de Incus desde Zabbly
+│   ├── network.sh              # Configuración OVN e infraestructura de red
+│   ├── profiles.sh             # Creación de perfiles de recursos
+│   ├── volumes.sh              # Creación de volúmenes persistentes
+│   ├── containers.sh           # Lanzamiento y configuración de contenedores
+│   ├── setup-services.sh       # Instalación de dependencias y ejecución de Ansible
+│   ├── setup-lab.sh            # Orquestador principal (llama a los scripts de infra)
+│   ├── validate.sh             # Validación de contenedores y servicios
+│   ├── shutdown.sh             # Apagado ordenado del laboratorio
+│   └── startup.sh              # Arranque ordenado del laboratorio
+```
+
+---
+
+## Red
+
+| Parámetro | Valor |
+|---|---|
+| Tipo | OVN (Open Virtual Network) |
+| Nombre | `lab-net` |
+| Subred | `10.10.0.0/24` |
+| NAT | Deshabilitado |
+| Rango DHCP/OVN | `10.10.0.2 – 10.10.0.250` |
+
+---
+
+## Perfiles de recursos
+
+| Perfil | CPUs | RAM | Rol |
+|---|---|---|---|
+| ctl | 1 | 512 MiB | Orquestación |
+| api | 2 | 1024 MiB | REST API |
+| core | 2 | 1536 MiB | Lógica de negocio |
+| db | 4 | 4096 MiB | PostgreSQL |
+| mon | 2 | 1024 MiB | Prometheus + Grafana |
+| ceph | 2 | 2048 MiB | Almacenamiento distribuido |
+
+---
+
+## Volúmenes persistentes
+
+| Volumen | Montado en | Contenedor |
+|---|---|---|
+| `postgres-data` | `/var/lib/postgresql` | db |
+| `prometheus-data` | `/prometheus` | mon |
+| `grafana-data` | `/var/lib/grafana` | mon |
+| `ceph-data` | `/var/lib/ceph` | ceph |
+| `app-data` | `/app/data` | api, core |
+
+---
+
+## Configuración de Servicios (Ansible)
+
+A diferencia de la gestión manual, todo el provisionamiento de software dentro de los contenedores está automatizado a través de Ansible.
+
+El script `scripts/setup-services.sh` se encarga de:
+1. Instalar Ansible en el host y la colección de Incus (`community.general`).
+2. Instalar Python3 en todos los contenedores.
+3. Generar dinámicamente un archivo de inventario `inventory.ini`.
+4. Crear y ejecutar los Playbooks (`playbook-base.yml`, `playbook-db.yml`, `playbook-mon.yml`, `playbook-app.yml`).
+
+Si en el futuro deseas re-ejecutar un aprovisionamiento o alterar una configuración, solo debes editar y ejecutar este script.
+
+---
+
+## Pendiente
+
+### Siguiente prioridad — Conexión app → base de datos
+
+- [ ] Crear usuario y base de datos en PostgreSQL (`reservas_db`, usuario `app`)
+- [ ] Instalar `psycopg2` u ORMs en `api` y `core`
+- [ ] Configurar variables de entorno de conexión en el proyecto FastAPI.
+
+### Servicios systemd para la app
+
+- [ ] Crear unit files para FastAPI en `api` y `core`
+- [ ] Habilitar arranque automático del uvicorn con el contenedor.
+
+### Observabilidad
+
+- [ ] Configurar scraping de Prometheus hacia `api`, `core` y `db`
+- [ ] Importar dashboards base en Grafana (PostgreSQL, sistema)
+- [ ] Configurar data source Prometheus en Grafana
+
+### Almacenamiento
+
+- [ ] Configurar Ceph en `ceph` (MON + OSD mínimo)
+- [ ] Integrar volumen Ceph con `api` y `core`
+
+---
+
+## Operación del laboratorio
+
+### Arranque Completo
 
 ```bash
-# Escuchar solo en localhost (más seguro)
-sudo incus config set core.https_address 127.0.0.1:8443
+sudo bash scripts/startup.sh
 ```
 
-### Acceso
+El script inicia los contenedores garantizando dependencias: `ceph` → `db` → `mon` → `core` → `api` → `ctl`.
 
-1. Abrir navegador en `https://localhost:8443`
-2. Aceptar certificado autofirmado (self-signed)
-3. Generar token de autenticación:
-
-   ```bash
-   sudo incus config trust add incus-ui
-   ```
-
-4. Pegar el token en la UI → Import → Listo
-
----
-
-## 🗺️ Roadmap
-
-### ✅ Etapa 1 — Infraestructura Base (completada)
-
-- [x] WSL2 + Ubuntu 24.04 como host
-- [x] Incus 6.0.0 instalado y operativo
-- [x] OVN + Open vSwitch configurados
-- [x] Storage pool `default` creado
-- [x] 6 perfiles con límites de CPU, RAM y disco
-- [x] 5 volúmenes persistentes creados
-- [x] Red OVN `lab-net` en `10.10.0.0/24`
-- [x] 6 contenedores Debian 13 corriendo
-- [x] Conectividad verificada (0% packet loss)
-- [x] Scripts `setup-lab.sh`, `start-lab.sh`, `stop-lab.sh` creados y probados
-
-### ✅ Etapa 2 — IaC con OpenTofu (completada)
-
-- [x] OpenTofu v1.9.0 instalado en WSL2 (host)
-- [x] Infraestructura convertida a archivos `.tf`
-- [x] 13 recursos importados al estado de OpenTofu:
-  - 1 storage pool
-  - 6 perfiles
-  - 6 contenedores
-- [x] `tofu plan` reporta **0 cambios** (infra sincronizada)
-- [x] Documentación de problemas y soluciones de IaC
-- [x] UI Web de Incus instalada y configurada
-
-### 🔄 Etapa 2b — Configuración con Ansible (pendiente)
-
-- [ ] Ansible instalado en WSL2
-- [ ] SSH configurado en los 6 contenedores
-- [ ] Inventario dinámico con IPs de Incus
-- [ ] Playbooks por rol (PostgreSQL, API, Monitoring, Ceph)
-
-### 📅 Etapa 3 — Aplicación y Observabilidad
-
-- [ ] API REST en `app-api` (FastAPI / Node.js)
-- [ ] Lógica de negocio en `app-core`
-- [ ] PostgreSQL configurado con esquema de reservas
-- [ ] Prometheus recolectando métricas de todos los nodos
-- [ ] Grafana con dashboards del clúster
-- [ ] Test de recuperabilidad (destruir/recrear contenedor)
-
----
-
-## 🛠️ Alternativas y Decisiones Técnicas
-
-### ¿Por qué WSL2 en lugar de Linux físico?
-
-El enunciado original asume un host Linux dedicado. Se optó por WSL2 para demostrar reproducibilidad en hardware de desarrollo cotidiano. **Limitación documentada:** los contenedores con red OVN pierden acceso a Internet (gateway no enruta a WAN).
-
-### ¿Por qué OpenTofu desde WSL2 y no desde `node-control`?
-
-Se intentó instalar OpenTofu dentro del contenedor `node-control`, pero falló por falta de conectividad a Internet (DNS no resolvía, gateway `10.10.0.1` no respondía). La solución pragmática fue ejecutar OpenTofu desde el **host WSL2**, que tiene acceso directo al socket de Incus.
-
-### ¿Por qué no gestionar redes y volúmenes con OpenTofu?
-
-El provider `lxc/incus` v0.5.1 tiene bugs conocidos al importar redes tipo `bridge` y volúmenes persistentes. Se documentan como infraestructura base creada en Etapa 1 y se referencian como strings literales en los archivos `.tf`.
-
-### ¿Por qué Debian 13 en todos los contenedores?
-
-Uniformidad: un solo ecosistema de paquetes (`apt`), troubleshooting directo, bajo consumo de recursos. El análisis completo de selección de distribuciones está documentado en la primera versión del proyecto.
-
----
-
-## 📚 Documentación
-
-| Documento | Contenido |
-|-----------|-----------|
-| `docs/etapa1_infraestructura_incus.md` | Paso a paso de la Etapa 1 |
-| `docs/etapa2_iac_opentofu.md` | Infraestructura como Código con OpenTofu |
-| `scripts/setup-lab.sh` | Creación completa del laboratorio |
-| `scripts/start-lab.sh` | Arranque ordenado |
-| `scripts/stop-lab.sh` | Apagado limpio |
-
----
-
-## 🔧 Comandos Útiles de Referencia
+### Apagado Ordenado
 
 ```bash
-# Ver estado de contenedores
-sudo incus list
-
-# Ver redes
-sudo incus network list
-
-# Ver perfiles
-sudo incus profile list
-
-# Ver volúmenes
-sudo incus storage volume list default
-
-# Entrar a un contenedor
-sudo incus exec <nombre> -- bash
-
-# Ver logs de un contenedor
-sudo incus log <nombre>
-
-# OpenTofu — ver plan (desde ~/lab-reservas/tofu)
-cd ~/lab-reservas/tofu
-sudo tofu plan
-
-# OpenTofu — listar recursos gestionados
-sudo tofu state list
-
-# UI Web de Incus
-https://localhost:8443
+sudo bash scripts/shutdown.sh
 ```
+
+Detiene servicios permitiendo la bajada a disco y evitando corrupción: `api` → `core` → `mon` → `ceph` → `db` → `ctl`.
+
+---
+
+## Documentación de referencia
+
+| Archivo | Contenido |
+|---|---|
+| `infraestructura.md` | Justificación técnica de Debian 13, matriz de decisión, y detalles minuciosos del funcionamiento de cada Script. (Documento Base) |
+| `choices.md` | Log de todos los cambios con fecha, archivos afectados y razón |
+| `memory.md` | Contexto general y decisiones. |
+
+---
+
+*Proyecto académico — Plataforma de Gestión de Reservas — Mayo 2026*
