@@ -138,7 +138,6 @@ Incus_Reservation_Management_Platform/
 ├── README.md                   # Este archivo
 ├── choices.md                  # Log de cambios técnicos y estado del despliegue
 ├── infraestructura.md          # Documentación técnica y desglose de scripts
-├── memory.md                   # Log de contexto y decisiones
 ├── setupnetwork.md             # Guía de la estructura teórica OVN
 ├── scripts/
 │   ├── incusinstall.sh         # Instalación de Incus desde Zabbly
@@ -197,6 +196,7 @@ Incus_Reservation_Management_Platform/
 A diferencia de la gestión manual, todo el provisionamiento de software dentro de los contenedores está automatizado a través de Ansible.
 
 El script `scripts/setup-services.sh` se encarga de:
+
 1. Instalar Ansible en el host y la colección de Incus (`community.general`).
 2. Instalar Python3 en todos los contenedores.
 3. Generar dinámicamente un archivo de inventario `inventory.ini`.
