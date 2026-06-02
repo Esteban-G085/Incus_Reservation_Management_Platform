@@ -6,7 +6,7 @@ echo "Starting containers creation and configuration"
 set -e  # Exit on any error
 
 # Launch ctl
-echo "[1/6] Launching ctl container"
+echo "[1/9] Launching ctl container"
 if ! sudo incus info ctl >/dev/null 2>&1; then
     sudo incus launch images:debian/13 ctl -p ctl -p default -n lab-net
     echo "OK: ctl launched"
@@ -15,7 +15,7 @@ else
 fi
 
 # Launch api with app-data volume
-echo "[2/6] Launching app-data container"
+echo "[2/9] Launching app-data container"
 if ! sudo incus info api >/dev/null 2>&1; then
     sudo incus launch images:debian/13 api -p api -p default -n lab-net
     if sudo incus storage volume show default app-data >/dev/null 2>&1; then
@@ -29,7 +29,7 @@ else
 fi
 
 # Launch core with app-data volume
-echo "[3/6] Launching core container"
+echo "[3/9] Launching core container"
 if ! sudo incus info core >/dev/null 2>&1; then
     sudo incus launch images:debian/13 core -p core -p default -n lab-net
     if sudo incus storage volume show default app-data >/dev/null 2>&1; then
@@ -43,7 +43,7 @@ else
 fi
 
 # Launch db with postgres-data volume
-echo "[4/6] Launching db container"
+echo "[4/9] Launching db container"
 if ! sudo incus info db >/dev/null 2>&1; then
     sudo incus launch images:debian/13 db -p db -p default -n lab-net
     if sudo incus storage volume show default postgres-data >/dev/null 2>&1; then
@@ -57,7 +57,7 @@ else
 fi
 
 # Launch mon with prometheus-data and grafana-data volumes
-echo "[5/6] Launching mon container"
+echo "[5/9] Launching mon container"
 if ! sudo incus info mon >/dev/null 2>&1; then
     sudo incus launch images:debian/13 mon -p mon -p default -n lab-net
     if sudo incus storage volume show default prometheus-data >/dev/null 2>&1; then
@@ -76,7 +76,7 @@ else
 fi
 
 # Launch ceph with ceph-data volume (privileged for loop device + Ceph OSD)
-echo "[6/6] Launching ceph container"
+echo "[6/9] Launching ceph container"
 if ! sudo incus info ceph >/dev/null 2>&1; then
     sudo incus launch images:debian/13 ceph -p ceph -p default -n lab-net -c security.privileged=true
     if sudo incus storage volume show default ceph-data >/dev/null 2>&1; then
@@ -92,15 +92,15 @@ else
 fi
 
 # Add proxy device for frontend access from host
-echo "[7/6] Adding frontend proxy device..."
+echo "[7/9] Adding frontend proxy device..."
 sudo incus config device add core frontend-port proxy listen=tcp:0.0.0.0:5173 connect=tcp:127.0.0.1:5173 2>/dev/null && echo "OK: frontend port forwarded" || echo "OK: frontend proxy already exists"
 
 # Add proxy device for API access from host
-echo "[7b/6] Adding API proxy device..."
+echo "[8/9] Adding API proxy device..."
 sudo incus config device add api api-port proxy listen=tcp:0.0.0.0:8080 connect=tcp:127.0.0.1:8080 2>/dev/null && echo "OK: API port forwarded" || echo "OK: API proxy already exists"
 
 # Add proxy device for Prometheus access from host
-echo "[7c/6] Adding Prometheus proxy device..."
+echo "[9/9] Adding Prometheus proxy device..."
 sudo incus config device add mon prometheus-port proxy listen=tcp:0.0.0.0:9090 connect=tcp:127.0.0.1:9090 2>/dev/null && echo "OK: Prometheus port forwarded" || echo "OK: Prometheus proxy already exists"
 
 echo "All containers launched and configured"
