@@ -16,3 +16,4 @@ echo Laboratorio iniciado.
 echo Para verificar: validate.bat
 echo Para apagar: shutdown.bat
 echo.
+pause

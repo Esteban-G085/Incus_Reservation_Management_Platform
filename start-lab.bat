@@ -50,3 +50,4 @@ echo ==========================================
 echo.
 echo Para apagar: shutdown.bat
 echo.
+pause
