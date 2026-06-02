@@ -158,13 +158,19 @@ var DB *gorm.DB
 
 func Connect(dsn string) {
     var err error
-    DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
-        Logger: logger.Default.LogMode(logger.Silent),
-    })
-    if err != nil {
-        log.Fatalf("Error conectando a PostgreSQL: %v", err)
+    for i := 0; i < 30; i++ {
+        DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
+            Logger: logger.Default.LogMode(logger.Silent),
+            DisableForeignKeyConstraintWhenMigrating: true,
+        })
+        if err == nil {
+            log.Println("Conexión a PostgreSQL establecida")
+            return
+        }
+        log.Printf("Esperando PostgreSQL (intento %d/30): %v", i+1, err)
+        time.Sleep(2 * time.Second)
     }
-    log.Println("Conexión a PostgreSQL establecida")
+    log.Fatalf("No se pudo conectar a PostgreSQL tras 30 intentos: %v", err)
 }
 
 func Migrate(models ...interface{}) {
