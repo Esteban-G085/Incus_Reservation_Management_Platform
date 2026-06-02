@@ -61,56 +61,74 @@ Host: Windows 11 + WSL 2 (Debian 13)
 
 ## Despliegue
 
-Puedes obtener los archivos del proyecto de dos formas: mediante Git (automatizado) o de forma manual descargando un ZIP (sin necesidad de Git).
+### 1. Instalar Debian en WSL
 
-### Opción A: Vía Git (Recomendada)
+Desde PowerShell (como Administrador):
 
-```bash
-sudo apt update && sudo apt install -y git curl gpg
-git clone https://github.com/Esteban-G085/Incus_Reservation_Management_Platform "$HOME/Incus_Reservation_Management_Platform"
-cd "$HOME/Incus_Reservation_Management_Platform"
+```powershell
+# Asegurar que WSL 2 está activo
+wsl --set-default-version 2
+
+# Instalar Debian desde la galería de Microsoft
+wsl --install -d Debian
 ```
 
-### Opción B: Forma Manual / Sin Git (Descarga de ZIP)
+Esto descarga e instala Debian automáticamente. Al entrar por primera vez te pedirá crear usuario y contraseña.
 
-Si no deseas usar `git`, puedes descargar el código fuente y extraerlo manualmente:
+### 2. Preparar Debian
+
+Una vez dentro de la nueva Debian WSL:
 
 ```bash
-sudo apt update && sudo apt install -y curl unzip gpg
-wget https://github.com/Esteban-G085/Incus_Reservation_Management_Platform/archive/refs/heads/main.zip -O lab.zip
-unzip lab.zip
-mv Incus_Reservation_Management_Platform-main "$HOME/Incus_Reservation_Management_Platform"
-cd "$HOME/Incus_Reservation_Management_Platform"
-rm ../lab.zip
+# Actualizar paquetes
+sudo apt update && sudo apt upgrade -y
+
+# Instalar herramientas básicas
+sudo apt install -y git curl gpg
+
+# Clonar el proyecto
+cd ~
+git clone https://github.com/Esteban-G085/Incus_Reservation_Management_Platform
+cd Incus_Reservation_Management_Platform
 ```
 
----
-
-### Paso Final: Instalación y Despliegue Automático
-
-Una vez dentro de la carpeta del proyecto, ejecuta la instalación de Incus y la creación del laboratorio:
+### 3. Desplegar todo
 
 ```bash
-# 1. Instalar Incus (vía Zabbly)
+# 3a. Instalar Incus
 sudo bash scripts/incusinstall.sh
 
-# 2. Inicializar Incus
-sudo incus admin init --minimal
-
-# 3. Desplegar la infraestructura base (Red, Perfiles, Volúmenes, Contenedores)
+# 3b. Crear infraestructura (red, perfiles, volúmenes, contenedores)
 sudo bash scripts/setup-lab.sh
 
-# 4. Configurar Servicios internos (Ansible, PostgreSQL, Prometheus, API)
-sudo bash scripts/setup-services.sh
-
-# 5. Configurar proxy devices para acceso desde el host
-sudo bash scripts/containers.sh
-
-# 6. Validar el despliegue
-sudo bash scripts/validate.sh
+# 3c. Configurar servicios (elige ruta A o B, ver más abajo)
 ```
 
-Resultado esperado: 6 contenedores en estado `RUNNING` con IPs en `10.10.0.x`, volúmenes atachados, y servicios internos respondiendo adecuadamente.
+**Ruta A — Rápida con Ansible:**
+
+```bash
+sudo bash scripts/setup-services.sh
+```
+
+**Ruta B — Completa (con Ceph, frontend React, API Go, Grafana):**
+
+```bash
+sudo apt install -y dos2unix
+find . -name "*.sh" -exec dos2unix {} \;
+sudo bash scripts/setup-db.sh
+sudo bash scripts/setup-api-go.sh
+sudo bash scripts/setup-frontend.sh
+sudo bash scripts/setup-ceph.sh
+sudo bash scripts/setup-ceph-client.sh
+sudo bash scripts/setup-metrics.sh
+sudo bash scripts/setup-grafana.sh
+```
+
+### 4. Validar
+
+```bash
+sudo bash scripts/validate.sh
+```
 
 ---
 
@@ -178,10 +196,6 @@ Incus_Reservation_Management_Platform/
 │   │   └── adjunto.go
 │   └── storage/
 │       └── ceph.go             # Integración con Ceph (rados CLI)
-├── start-lab.bat               # Inicio completo desde Windows
-├── startup.bat                 # Inicio rápido desde Windows
-├── shutdown.bat                # Apagado desde Windows
-├── validate.bat                # Validación desde Windows
 └── scripts/
     ├── incusinstall.sh         # Instalación de Incus desde Zabbly
     ├── network.sh              # Configuración OVN e infraestructura de red

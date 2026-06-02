@@ -260,6 +260,19 @@ AUTH_CTX
 cat > src/hooks/useApi.js <<'API_HOOK'
 const BASE = '/api/v1'
 
+async function handleResponse(r) {
+  const text = await r.text()
+  if (!text) {
+    if (r.ok) return null
+    throw new Error(`Error ${r.status}: respuesta vacía`)
+  }
+  try {
+    return JSON.parse(text)
+  } catch {
+    throw new Error(text.slice(0, 100))
+  }
+}
+
 export function useApi() {
   const token = localStorage.getItem('token')
   const headers = {
@@ -267,10 +280,10 @@ export function useApi() {
     ...(token ? { Authorization: `Bearer ${token}` } : {})
   }
 
-  const get = (path) => fetch(`${BASE}${path}`, { headers }).then(r => r.json())
-  const post = (path, body) => fetch(`${BASE}${path}`, { method: 'POST', headers, body: JSON.stringify(body) }).then(r => r.json())
-  const put = (path, body) => fetch(`${BASE}${path}`, { method: 'PUT', headers, body: JSON.stringify(body) }).then(r => r.json())
-  const del = (path) => fetch(`${BASE}${path}`, { method: 'DELETE', headers }).then(r => r.json())
+  const get = (path) => fetch(`${BASE}${path}`, { headers }).then(handleResponse)
+  const post = (path, body) => fetch(`${BASE}${path}`, { method: 'POST', headers, body: JSON.stringify(body) }).then(handleResponse)
+  const put = (path, body) => fetch(`${BASE}${path}`, { method: 'PUT', headers, body: JSON.stringify(body) }).then(handleResponse)
+  const del = (path) => fetch(`${BASE}${path}`, { method: 'DELETE', headers }).then(handleResponse)
 
   return { get, post, put, del }
 }
@@ -376,7 +389,9 @@ export default function Login() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       })
-      const data = await res.json()
+      const text = await res.text()
+      let data
+      try { data = JSON.parse(text) } catch { throw new Error('Error de conexión con el servidor') }
       if (!res.ok) throw new Error(data.error || 'Error de autenticación')
       if (mode === 'register') {
         setMode('login')
@@ -478,11 +493,12 @@ export default function Dashboard() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [recursos, reservas, healthData] = await Promise.all([
-          api.get('/recursos'),
-          api.get('/reservas'),
-          fetch('/api/v1/health').then(r => r.json())
-        ])
+          const [recursos, reservas, healthRes] = await Promise.all([
+            api.get('/recursos'),
+            api.get('/reservas'),
+            fetch('/api/v1/health').then(r => r.text().then(t => { try { return JSON.parse(t) } catch { return null } }))
+          ])
+          const healthData = healthRes
         setStats({
           recursos: recursos.data?.length || 0,
           disponibles: recursos.data?.filter(r => r.estado === 'disponible').length || 0,
@@ -572,11 +588,16 @@ export default function Recursos() {
 
   const handleSubmit = async (e) => {
     e.preventDefault(); setSaving(true); setError('')
-    const res = await api.post('/recursos', form)
-    if (res.error) { setError(res.error); setSaving(false); return }
-    setShowForm(false)
-    setForm({ nombre: '', tipo: 'sala', estado: 'disponible' })
-    load()
+    try {
+      const res = await api.post('/recursos', form)
+      if (!res) { setError('Error de conexión con el servidor'); setSaving(false); return }
+      if (res.error) { setError(res.error); setSaving(false); return }
+      setShowForm(false)
+      setForm({ nombre: '', tipo: 'sala', estado: 'disponible' })
+      load()
+    } catch (err) {
+      setError(err.message || 'Error inesperado')
+    }
     setSaving(false)
   }
 
@@ -696,16 +717,22 @@ export default function Reservas() {
 
   const handleSubmit = async (e) => {
     e.preventDefault(); setSaving(true); setError('')
-    const body = {
-      id_recurso: parseInt(form.id_recurso),
-      fecha_inicio: new Date(form.fecha_inicio).toISOString(),
-      fecha_fin: new Date(form.fecha_fin).toISOString()
+    try {
+      const body = {
+        id_recurso: parseInt(form.id_recurso),
+        fecha_inicio: new Date(form.fecha_inicio).toISOString(),
+        fecha_fin: new Date(form.fecha_fin).toISOString()
+      }
+      const res = await api.post('/reservas', body)
+      if (!res) { setError('Error de conexión con el servidor'); setSaving(false); return }
+      if (res.error) { setError(res.error); setSaving(false); return }
+      setShowForm(false)
+      setForm({ id_recurso: '', fecha_inicio: '', fecha_fin: '' })
+      load()
+    } catch (err) {
+      setError(err.message || 'Error inesperado')
     }
-    const res = await api.post('/reservas', body)
-    if (res.error) { setError(res.error); setSaving(false); return }
-    setShowForm(false)
-    setForm({ id_recurso: '', fecha_inicio: '', fecha_fin: '' })
-    load(); setSaving(false)
+    setSaving(false)
   }
 
   const handleCancel = async (id) => {
