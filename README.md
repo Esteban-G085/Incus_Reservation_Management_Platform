@@ -35,7 +35,7 @@ Host: Windows 11 + WSL 2 (Debian 13)
        │
        └── Incus + OVN
               │
-              └── lab-net (10.10.0.0/24, sin NAT)
+              └── lab-net (10.10.0.0/24, con NAT)
                      │
           ┌──────────┬──────────┬──────────┬─────────┬─────────┐
           │          │          │          │         │         │
@@ -213,7 +213,7 @@ Incus_Reservation_Management_Platform/
 | Tipo | OVN (Open Virtual Network) |
 | Nombre | `lab-net` |
 | Subred | `10.10.0.0/24` |
-| NAT | Deshabilitado |
+| NAT | Habilitado |
 | Rango DHCP/OVN | `10.10.0.2 – 10.10.0.250` |
 
 ---

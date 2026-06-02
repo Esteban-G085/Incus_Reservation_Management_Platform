@@ -29,7 +29,7 @@ func main() {
 	)
 
 	if err := storage.InitCeph(); err != nil {
-		log.Fatalf("Error inicializando Ceph: %v", err)
+		log.Printf("Advertencia: Error inicializando Ceph: %v", err)
 	}
 
 	handlers.SetJWTSecret(cfg.JWTSecret)

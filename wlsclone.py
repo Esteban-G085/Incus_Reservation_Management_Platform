@@ -1,4 +1,4 @@
-# -*- coding: latin-1 -*-
+# -*- coding: utf-8 -*-
 import subprocess
 import argparse
 import os
@@ -37,11 +37,11 @@ def clonar_wsl(nuevo_nombre, distro_base="Debian-base", ruta_destino=None):
     ejecutar_comando(["wsl", "--export", distro_base, ruta_tar])
 
     # 3. Importar la nueva distro
-    print(f"[*] Paso 2/3: Importando la nueva distribuci�n '{nuevo_nombre}'...")
+    print(f"[*] Paso 2/3: Importando la nueva distribución '{nuevo_nombre}'...")
     try:
         ejecutar_comando(["wsl", "--import", nuevo_nombre, ruta_destino, ruta_tar])
     except SystemExit:
-        # Si falla la importaci�n, limpiar el archivo temporal antes de salir
+        # Si falla la importación, limpiar el archivo temporal antes de salir
         if os.path.exists(ruta_tar):
             os.remove(ruta_tar)
         sys.exit(1)
@@ -52,16 +52,16 @@ def clonar_wsl(nuevo_nombre, distro_base="Debian-base", ruta_destino=None):
         os.remove(ruta_tar)
 
     print("-" * 50)
-    print(f"[+] ��xito! La distribuci�n '{nuevo_nombre}' est� lista para usarse.")
+    print(f"[+] ¡Éxito! La distribución '{nuevo_nombre}' está lista para usarse.")
     print(f"[i] Comando para entrar: wsl -d {nuevo_nombre}")
-    print("[i] Nota: Iniciar�s como 'root'. Recuerda configurar /etc/wsl.conf para tu usuario habitual.")
+    print("[i] Nota: Iniciarás como 'root'. Recuerda configurar /etc/wsl.conf para tu usuario habitual.")
     print("-" * 50)
 
 if __name__ == "__main__":
     # Configurar los argumentos de consola
-    parser = argparse.ArgumentParser(description="Clona una distribuci�n de WSL export�ndola e import�ndola autom�ticamente.")
-    parser.add_argument("nuevo_nombre", help="El nombre que le dar�s a la nueva distribuci�n (ej. Debian2)")
-    parser.add_argument("--base", default="Debian-base", help="El nombre de la distro instalada que servir� de plantilla (Por defecto: Debian)")
+    parser = argparse.ArgumentParser(description="Clona una distribución de WSL exportándola e importándola automáticamente.")
+    parser.add_argument("nuevo_nombre", help="El nombre que le darás a la nueva distribución (ej. Debian2)")
+    parser.add_argument("--base", default="Debian-base", help="El nombre de la distro instalada que servirá de plantilla (Por defecto: Debian)")
     parser.add_argument("--destino", default="", help="Ruta personalizada donde guardar el disco virtual (VHDX)")
 
     args = parser.parse_args()

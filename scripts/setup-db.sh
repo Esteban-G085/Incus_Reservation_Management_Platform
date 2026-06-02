@@ -25,10 +25,11 @@ systemctl start postgresql > /dev/null 2>&1
 systemctl enable postgresql > /dev/null 2>&1
 
 echo "[4/8] Configurando PostgreSQL para escuchar en todas las interfaces..."
-sed -i "s/#listen_addresses = 'localhost'/listen_addresses = '*'/g" /etc/postgresql/15/main/postgresql.conf
+PG_VER=$(ls /etc/postgresql | head -n 1)
+sed -i "s/#listen_addresses = 'localhost'/listen_addresses = '*'/g" /etc/postgresql/$PG_VER/main/postgresql.conf
 
-echo "[5/8] Configurando autenticacion para red 10.100.0.0/24..."
-echo "host    all             all             10.100.0.0/24           md5" >> /etc/postgresql/15/main/pg_hba.conf
+echo "[5/8] Configurando acceso desde lab-net en pg_hba.conf..."
+echo "host    all             all             10.100.0.0/24           md5" >> /etc/postgresql/$PG_VER/main/pg_hba.conf
 
 echo "[6/8] Reiniciando PostgreSQL..."
 systemctl restart postgresql > /dev/null 2>&1

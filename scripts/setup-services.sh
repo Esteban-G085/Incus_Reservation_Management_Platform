@@ -132,6 +132,30 @@ cat > "$REPO_DIR/playbook-mon.yml" << 'EOF'
 - hosts: monitoring
   become: true
   tasks:
+    - name: Configurar scrape targets de Prometheus
+      copy:
+        dest: /etc/prometheus/prometheus.yml
+        content: |
+          global:
+            scrape_interval: 15s
+            evaluation_interval: 15s
+
+          scrape_configs:
+            - job_name: 'reservas-api'
+              static_configs:
+                - targets: ['10.100.0.3:8080']
+              metrics_path: /metrics
+
+            - job_name: 'node'
+              static_configs:
+                - targets: ['10.100.0.6:9100']
+
+            - job_name: 'prometheus'
+              static_configs:
+                - targets: ['localhost:9090']
+        mode: '0644'
+      notify: restart prometheus
+
     - name: Instalar dependencias
       apt:
         name:

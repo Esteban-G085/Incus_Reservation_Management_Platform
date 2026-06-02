@@ -215,7 +215,7 @@ Se ejecuta `scripts/network.sh` para crear y configurar la red `lab-net`.
 
 - Verifica si la red OVN `lab-net` ya existe.
 - Si no existe, la crea asignando explícitamente el rango IPv4 `10.10.0.1/24`.
-- Desactiva NAT (`ipv4.nat=false`) para aislar el laboratorio y evitar que salga tráfico indeseado o reglas de ruteo conflictivas.
+- Habilita NAT (`ipv4.nat=true`) para permitir que los contenedores tengan salida a internet y se puedan instalar paquetes.
 
 ### Paso 2: Crear Perfiles y Volúmenes
 
