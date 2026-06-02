@@ -16,8 +16,6 @@ Laboratorio de microservicios basado en contenedores **Incus** sobre **Debian 13
 - [Volúmenes persistentes](#volúmenes-persistentes)
 - [Configuración de Servicios (Ansible)](#configuración-de-servicios-ansible)
 - [API REST (Go + Gin)](#api-rest-go--gin)
-- [Proxy devices (acceso desde el host)](#proxy-devices-acceso-desde-el-host)
-- [Uso desde Windows](#uso-desde-windows)
 - [Pendiente](#pendiente)
 - [Operación del laboratorio](#operación-del-laboratorio)
 - [Documentación de referencia](#documentación-de-referencia)
@@ -61,74 +59,194 @@ Host: Windows 11 + WSL 2 (Debian 13)
 
 ## Despliegue
 
-### 1. Instalar Debian en WSL
+> **Guía completa — Desde WSL hasta la plataforma funcionando**
 
-Desde PowerShell (como Administrador):
+### 1. Instalar WSL2 y Debian
+
+En PowerShell (como Administrador):
 
 ```powershell
-# Asegurar que WSL 2 está activo
+# Habilitar WSL
+wsl --install
+
+# Instalar Debian
+wsl --install -d Debian
+
+# Configurar WSL2 como versión por defecto
 wsl --set-default-version 2
 
-# Instalar Debian desde la galería de Microsoft
-wsl --install -d Debian
+# Verificar
+wsl -l -v
+# → Debian    Running    2
 ```
 
-Esto descarga e instala Debian automáticamente. Al entrar por primera vez te pedirá crear usuario y contraseña.
+Al entrar por primera vez, crea un usuario (ej. `esteban`) con contraseña.
 
-### 2. Preparar Debian
+### 2. Clonar el repositorio desde WSL
 
-Una vez dentro de la nueva Debian WSL:
+Dentro de la terminal de Debian (WSL):
 
 ```bash
-# Actualizar paquetes
-sudo apt update && sudo apt upgrade -y
+# Instalar git si no está
+sudo apt update && sudo apt install -y git
 
-# Instalar herramientas básicas
-sudo apt install -y git curl gpg
-
-# Clonar el proyecto
-cd ~
-git clone https://github.com/Esteban-G085/Incus_Reservation_Management_Platform
+# Clonar el repositorio
+git clone https://github.com/Esteban-G085/Incus_Reservation_Management_Platform.git
 cd Incus_Reservation_Management_Platform
 ```
 
-### 3. Desplegar todo
+> **Nota:** Los `.sh` ya están en LF en el repo, pero si clonaste con git en WSL no debería haber problema con CRLF.
+
+### 3. Instalar Incus
 
 ```bash
-# 3a. Instalar Incus
 sudo bash scripts/incusinstall.sh
-
-# 3b. Crear infraestructura (red, perfiles, volúmenes, contenedores)
-sudo bash scripts/setup-lab.sh
-
-# 3c. Configurar servicios (elige ruta A o B, ver más abajo)
+# o manualmente:
+sudo apt install -y incus
+sudo incus admin init --minimal
 ```
 
-**Ruta A — Rápida con Ansible:**
+### 4. Crear perfiles, red y contenedores
 
 ```bash
-sudo bash scripts/setup-services.sh
+# 4a. Perfiles de recursos
+sudo bash scripts/profiles.sh
+
+# 4b. Red interna (lab-net, 10.100.0.0/24)
+sudo bash scripts/network.sh
+
+# 4c. Volúmenes de datos persistentes
+sudo bash scripts/volumes.sh
+
+# 4d. Crear los 7 contenedores
+sudo bash scripts/setup.sh
+
+# 4e. Arrancar todos los contenedores
+sudo bash scripts/startup.sh
 ```
 
-**Ruta B — Completa (con Ceph, frontend React, API Go, Grafana):**
+Esto despliega:
+
+| Contenedor | IP | Rol |
+|---|---|---|
+| ceph | 10.100.0.2 | Almacenamiento Ceph |
+| db | 10.100.0.5 | PostgreSQL |
+| mon | 10.100.0.6 | Prometheus + Grafana |
+| core | 10.100.0.4 | Frontend React |
+| api | 10.100.0.3 | API Go |
+| ctl | 10.100.0.7 | Control/Herramientas |
+| adm | — | Administración |
+
+### 5. Configurar Ceph
 
 ```bash
-sudo apt install -y dos2unix
-find . -name "*.sh" -exec dos2unix {} \;
-sudo bash scripts/setup-db.sh
-sudo bash scripts/setup-api-go.sh
-sudo bash scripts/setup-frontend.sh
+# Temporal: 4 GB para crear el OSD
+sudo incus profile set ceph limits.memory=4096MiB
+
+# Ejecutar setup
 sudo bash scripts/setup-ceph.sh
+```
+
+> [!WARNING]
+> **Bug conocido en Ceph 18+:** El paso 6 falla por UUID mismatch. Si ocurre, ejecuta el workaround detallado en la [sección 5b](#5b-workaround-si-falla-osd).
+
+```bash
+# Restaurar memoria
+sudo incus profile set ceph limits.memory=2048MiB
+```
+
+### 5b. Workaround si falla OSD
+
+```bash
+sudo incus exec ceph -- bash -c "
+set -e
+systemctl stop ceph-osd@0 2>/dev/null || true
+rm -rf /var/lib/ceph/osd/ceph-*
+ceph osd rm 0 2>/dev/null || true
+
+OSD_UUID=\$(uuidgen)
+OSD_ID=0
+ceph osd create \$OSD_UUID \$OSD_ID
+
+mkdir -p /var/lib/ceph/osd/ceph-\${OSD_ID}
+ln -sf /var/lib/ceph/osd.img /var/lib/ceph/osd/ceph-\${OSD_ID}/block
+chown -h ceph:ceph /var/lib/ceph/osd/ceph-\${OSD_ID}/block
+
+ceph-osd --mkfs -i \$OSD_ID --osd-uuid \$OSD_UUID --conf /etc/ceph/ceph.conf --osd-data /var/lib/ceph/osd/ceph-\${OSD_ID} --setuser ceph --setgroup ceph
+ceph auth get-or-create osd.\${OSD_ID} mon 'allow profile osd' osd 'allow *' -o /var/lib/ceph/osd/ceph-\${OSD_ID}/keyring
+systemctl enable ceph-osd@\${OSD_ID}
+systemctl start ceph-osd@\${OSD_ID}
+"
+
+sudo incus exec ceph -- ceph -s
+# Debe mostrar: 1 osds: 1 up, 1 in, 32 pgs active+clean
+```
+
+### 6. Configurar clientes Ceph
+
+```bash
 sudo bash scripts/setup-ceph-client.sh
+```
+
+### 7. Configurar base de datos PostgreSQL
+
+```bash
+sudo bash scripts/setup-db.sh
+```
+
+### 8. Compilar y arrancar la API Go
+
+```bash
+sudo bash scripts/setup-api-go.sh
+```
+
+### 9. Configurar el frontend React
+
+```bash
+sudo bash scripts/setup-frontend.sh
+```
+
+### 10. Configurar monitoreo (Prometheus + Grafana)
+
+```bash
+# Prometheus
 sudo bash scripts/setup-metrics.sh
+
+# Grafana
 sudo bash scripts/setup-grafana.sh
 ```
 
-### 4. Validar
+### 11. Exponer puertos al host Windows
+
+Para acceder desde el navegador en Windows. Ejecuta en PowerShell (como usuario normal):
+
+```powershell
+wsl -d Debian -u root -e incus config device add api api-port proxy connect=tcp:127.0.0.1:8080 listen=tcp:0.0.0.0:8080
+wsl -d Debian -u root -e incus config device add core frontend-port proxy connect=tcp:127.0.0.1:5173 listen=tcp:0.0.0.0:5173
+wsl -d Debian -u root -e incus config device add mon prometheus-port proxy connect=tcp:127.0.0.1:9090 listen=tcp:0.0.0.0:9090
+wsl -d Debian -u root -e incus config device add mon grafana-port proxy connect=tcp:127.0.0.1:3000 listen=tcp:0.0.0.0:3000
+```
+
+### 12. Arranque limpio y verificación final
 
 ```bash
+# En WSL (Debian):
+sudo bash scripts/shutdown.sh
+sleep 10
+sudo bash scripts/startup.sh
 sudo bash scripts/validate.sh
 ```
+
+### 13. Probar desde Windows
+
+Abre en el navegador:
+
+| Servicio | URL | Credenciales |
+|---|---|---|
+| Frontend | `http://localhost:5173` | — |
+| API | `http://localhost:8080/api/v1/health` | — |
+| Prometheus | `http://localhost:9090` | — |
+| Grafana | `http://localhost:3000` | `admin` / `admin` |
 
 ---
 
@@ -329,62 +447,6 @@ La API está escrita en Go usando el framework **Gin** con **GORM** para la base
 
 ---
 
-## Proxy devices (acceso desde el host)
-
-Incus proxy devices permiten mapear puertos del contenedor al host. Se crean automáticamente con `scripts/containers.sh`:
-
-```text
-core:5173  → localhost:5173  (Frontend)
-api:8080   → localhost:8080  (API REST)
-mon:9090   → localhost:9090  (Prometheus)
-```
-
-Verificar con:
-
-```bash
-incus config device show api
-incus config device show core
-incus config device show mon
-```
-
-Los proxy devices se pierden si el contenedor se recrea. Vuelve a ejecutar `scripts/containers.sh` o usa los scripts `.bat` desde Windows.
-
----
-
-## Uso desde Windows
-
-### Requisitos
-
-- Windows 11 con **WSL 2**
-- Distribución **Debian** (o compatible) con Incus instalado
-- PowerShell (administrador)
-
-### Scripts disponibles
-
-| Script | Descripción |
-|---|---|
-| `start-lab.bat` | Inicio completo: verifica WSL, arranca Incus + contenedores, crea proxy devices, espera puertos (5173, 8080, 9090), abre el navegador |
-| `startup.bat` | Inicio rápido: solo arranca contenedores + proxy devices |
-| `shutdown.bat` | Apagado ordenado de todos los contenedores |
-| `validate.bat` | Validación: verifica WSL, estado de Incus y conectividad HTTP a los 3 servicios |
-
-> Ejecutar como **Administrador** para acceso al socket de Incus y proxy devices.
-
-### Uso típico
-
-```cmd
-# Iniciar el laboratorio
-start-lab.bat
-
-# Validar que todo funciona
-validate.bat
-
-# Apagar
-shutdown.bat
-```
-
----
-
 ## Pendiente
 
 ### Conexión app → base de datos (✅ resuelto con setup-db.sh + setup-api-go.sh)
@@ -432,6 +494,12 @@ sudo bash scripts/shutdown.sh
 ```
 
 Detiene servicios permitiendo la bajada a disco y evitando corrupción: `api` → `core` → `mon` → `db` → `ceph` → `ctl`.
+
+### Verificación
+
+```bash
+sudo bash scripts/validate.sh
+```
 
 ---
 
