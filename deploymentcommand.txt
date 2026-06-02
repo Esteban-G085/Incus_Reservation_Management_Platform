@@ -1,5 +1,62 @@
 # Opción A: Despliegue con Git (Recomendado)
-sudo apt update && sudo apt upgrade -y && sudo apt install -y git curl gpg && git clone https://github.com/Esteban-G085/Incus_Reservation_Management_Platform "$HOME/Incus_Reservation_Management_Platform" && cd "$HOME/Incus_Reservation_Management_Platform" && sudo bash scripts/incusinstall.sh
+# Install dependencies
+sudo apt-get update && sudo apt-get upgrade -y && sudo apt-get install -y git curl gpg dos2unix
+
+# Clone and run
+git clone https://github.com/Esteban-G085/Incus_Reservation_Management_Platform "$HOME/Incus_Reservation_Management_Platform" && cd "$HOME/Incus_Reservation_Management_Platform" && sudo bash scripts/incusinstall.sh
 
 # Opción B: Despliegue sin Git (Descarga del ZIP)
-sudo apt update && sudo apt upgrade -y && sudo apt install -y curl unzip gpg && wget https://github.com/Esteban-G085/Incus_Reservation_Management_Platform/archive/refs/heads/main.zip -O lab.zip && unzip lab.zip && mv Incus_Reservation_Management_Platform-main "$HOME/Incus_Reservation_Management_Platform" && cd "$HOME/Incus_Reservation_Management_Platform" && rm ../lab.zip && sudo bash scripts/incusinstall.sh
+# Install dependencies
+sudo apt-get update && sudo apt-get upgrade -y && sudo apt-get install -y curl unzip gpg dos2unix
+
+# Download and run
+wget https://github.com/Esteban-G085/Incus_Reservation_Management_Platform/archive/refs/heads/main.zip -O lab.zip && unzip lab.zip && mv Incus_Reservation_Management_Platform-main "$HOME/Incus_Reservation_Management_Platform" && cd "$HOME/Incus_Reservation_Management_Platform" && rm ../lab.zip && sudo bash scripts/incusinstall.sh
+
+# Opción C: Despliegue con Docker Desktop (Recomendado)
+
+```bash
+# Install Docker
+# Opción 1: Install from Docker repo
+sudo apt-get update && sudo apt-get install ca-certificates curl gnupg
+sudo install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$(lsb_release -cs)}") stable"
+  | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt-get update
+
+# Install Docker Compose plugin
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+# Create lab directory
+mkdir -p "$HOME/lab"
+cd "$HOME/lab"
+
+# Download the repository
+curl -L "https://github.com/Esteban-G085/Incus_Reservation_Management_Platform/archive/refs/heads/main.zip" -o lab.zip
+unzip lab.zip
+mv Incus_Reservation_Management_Platform-main "$HOME/Incus_Reservation_Management_Platform"
+rm lab.zip
+
+# Grant user permission
+sudo usermod -aG docker $USER
+
+# Apply changes and run the application
+newgrp docker
+cd "$HOME/Incus_Reservation_Management_Platform"
+
+# Stop containers if running
+docker compose down
+
+# Create .env file if it doesn't exist
+if [ ! -f .env ]; then
+  cp .env.example .env
+  # Update database credentials in .env if needed
+fi
+
+# Start the application with new credentials
+docker compose -f docker-compose.override.yml -f docker-compose.yml up -d
+
+```
