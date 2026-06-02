@@ -1,0 +1,25 @@
+# Windows Zone Identifier
+*Zone.Identifier
+
+# Go binaries
+api/reservas-api
+api/*.exe
+api/*.exe~
+
+# Go vendor
+api/vendor/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+*.log

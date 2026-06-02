@@ -1,0 +1,17 @@
+---
+- hosts: all
+  become: true
+  tasks:
+    - name: Actualizar repositorios
+      apt:
+        update_cache: yes
+
+    - name: Instalar paquetes base
+      apt:
+        name:
+          - curl
+          - wget
+          - git
+          - vim
+          - net-tools
+        state: present

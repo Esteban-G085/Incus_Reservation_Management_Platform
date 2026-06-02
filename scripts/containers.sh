@@ -75,10 +75,10 @@ else
     echo "OK: mon already exists, skipping"
 fi
 
-# Launch ceph with ceph-data volume
+# Launch ceph with ceph-data volume (privileged for loop device + Ceph OSD)
 echo "[6/6] Launching ceph container"
 if ! sudo incus info ceph >/dev/null 2>&1; then
-    sudo incus launch images:debian/13 ceph -p ceph -p default -n lab-net
+    sudo incus launch images:debian/13 ceph -p ceph -p default -n lab-net -c security.privileged=true
     if sudo incus storage volume show default ceph-data >/dev/null 2>&1; then
         sudo incus config device add ceph ceph-volume disk pool=default source=ceph-data path=/var/lib/ceph
         echo "OK: ceph launched and volume attached"
@@ -87,6 +87,20 @@ if ! sudo incus info ceph >/dev/null 2>&1; then
     fi
 else
     echo "OK: ceph already exists, skipping"
+    echo "Ensuring privileged mode for existing ceph container..."
+    sudo incus config set ceph security.privileged=true
 fi
+
+# Add proxy device for frontend access from host
+echo "[7/6] Adding frontend proxy device..."
+sudo incus config device add core frontend-port proxy listen=tcp:0.0.0.0:5173 connect=tcp:127.0.0.1:5173 2>/dev/null && echo "OK: frontend port forwarded" || echo "OK: frontend proxy already exists"
+
+# Add proxy device for API access from host
+echo "[7b/6] Adding API proxy device..."
+sudo incus config device add api api-port proxy listen=tcp:0.0.0.0:8080 connect=tcp:127.0.0.1:8080 2>/dev/null && echo "OK: API port forwarded" || echo "OK: API proxy already exists"
+
+# Add proxy device for Prometheus access from host
+echo "[7c/6] Adding Prometheus proxy device..."
+sudo incus config device add mon prometheus-port proxy listen=tcp:0.0.0.0:9090 connect=tcp:127.0.0.1:9090 2>/dev/null && echo "OK: Prometheus port forwarded" || echo "OK: Prometheus proxy already exists"
 
 echo "All containers launched and configured"

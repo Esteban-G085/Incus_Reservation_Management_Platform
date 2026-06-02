@@ -1,0 +1,88 @@
+---
+- hosts: monitoring
+  become: true
+  tasks:
+    - name: Instalar dependencias
+      apt:
+        name:
+          - apt-transport-https
+          - gnupg
+          - wget
+        state: present
+
+    - name: Instalar Prometheus
+      apt:
+        name: prometheus
+        state: present
+
+    - name: Configurar scrape targets de Prometheus
+      copy:
+        dest: /etc/prometheus/prometheus.yml
+        content: |
+          global:
+            scrape_interval: 15s
+            evaluation_interval: 15s
+
+          scrape_configs:
+            - job_name: 'reservas-api'
+              static_configs:
+                - targets: ['10.100.0.3:8080']
+              metrics_path: /metrics
+
+            - job_name: 'node'
+              static_configs:
+                - targets: ['10.100.0.6:9100']
+
+            - job_name: 'prometheus'
+              static_configs:
+                - targets: ['localhost:9090']
+        mode: '0644'
+      notify: restart prometheus
+
+    - name: Habilitar e iniciar Prometheus
+      systemd:
+        name: prometheus
+        enabled: yes
+        state: started
+
+    - name: Agregar repo de Grafana
+      shell: |
+        wget -q -O /usr/share/keyrings/grafana.key https://apt.grafana.com/gpg.key
+        echo "deb [signed-by=/usr/share/keyrings/grafana.key] https://apt.grafana.com stable main" > /etc/apt/sources.list.d/grafana.list
+      args:
+        creates: /etc/apt/sources.list.d/grafana.list
+
+    - name: Actualizar repositorios
+      apt:
+        update_cache: yes
+
+    - name: Instalar Grafana
+      apt:
+        name: grafana
+        state: present
+
+    - name: Habilitar e iniciar Grafana
+      systemd:
+        name: grafana-server
+        enabled: yes
+        state: started
+
+    - name: Verificar Prometheus
+      command: systemctl is-active prometheus
+      register: prom_status
+      changed_when: false
+
+    - name: Verificar Grafana
+      command: systemctl is-active grafana-server
+      register: graf_status
+      changed_when: false
+
+    - name: Mostrar estado
+      debug:
+        msg: "Prometheus: {{ prom_status.stdout }} | Grafana: {{ graf_status.stdout }}"
+
+  handlers:
+    - name: restart prometheus
+      systemd:
+        name: prometheus
+        state: restarted

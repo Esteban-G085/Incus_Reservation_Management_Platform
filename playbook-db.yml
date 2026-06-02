@@ -1,0 +1,57 @@
+---
+- hosts: database
+  become: true
+  tasks:
+    - name: Instalar PostgreSQL
+      apt:
+        name:
+          - postgresql
+          - postgresql-client
+        state: present
+
+    - name: Habilitar e iniciar PostgreSQL
+      systemd:
+        name: postgresql
+        enabled: yes
+        state: started
+
+    - name: Esperar a que PostgreSQL esté listo
+      command: pg_isready
+      register: pg_status
+      changed_when: false
+      retries: 5
+      delay: 2
+      until: pg_status.rc == 0
+
+    - name: Crear usuario reservas_user
+      become_user: postgres
+      command: psql -c "CREATE USER reservas_user WITH PASSWORD 'SecurePassword123!';"
+      register: create_user
+      changed_when: "'CREATE ROLE' in create_user.stdout"
+      failed_when: false
+      ignore_errors: yes
+
+    - name: Crear base de datos reservas_db
+      become_user: postgres
+      command: psql -c "CREATE DATABASE reservas_db OWNER reservas_user;"
+      register: create_db
+      changed_when: "'CREATE DATABASE' in create_db.stdout"
+      failed_when: false
+      ignore_errors: yes
+
+    - name: Habilitar extensión uuid-ossp
+      become_user: postgres
+      command: psql -d reservas_db -c "CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\";"
+
+    - name: Conceder privilegios
+      become_user: postgres
+      command: psql -c "GRANT ALL PRIVILEGES ON DATABASE reservas_db TO reservas_user;"
+
+    - name: Verificar estado final
+      command: pg_isready
+      register: pg_final
+      changed_when: false
+
+    - name: Mostrar estado de PostgreSQL
+      debug:
+        msg: "{{ pg_final.stdout }}"

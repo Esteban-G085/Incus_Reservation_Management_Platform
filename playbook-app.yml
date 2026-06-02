@@ -1,0 +1,71 @@
+---
+- hosts: app
+  become: true
+  vars:
+    go_version: "1.22.3"
+  tasks:
+    - name: Instalar dependencias del sistema
+      apt:
+        name:
+          - wget
+          - curl
+          - build-essential
+        state: present
+
+    - name: Crear directorio de la app
+      file:
+        path: /app
+        state: directory
+        mode: '0755'
+
+    - name: Descargar Go {{ go_version }}
+      get_url:
+        url: "https://go.dev/dl/go{{ go_version }}.linux-amd64.tar.gz"
+        dest: "/tmp/go{{ go_version }}.linux-amd64.tar.gz"
+        timeout: 120
+
+    - name: Instalar Go
+      unarchive:
+        src: "/tmp/go{{ go_version }}.linux-amd64.tar.gz"
+        dest: /usr/local
+        remote_src: yes
+        creates: /usr/local/go/bin/go
+
+    - name: Agregar Go al PATH global
+      copy:
+        dest: /etc/profile.d/go.sh
+        content: |
+          export PATH=$PATH:/usr/local/go/bin
+          export GOPATH=/root/go
+          export PATH=$PATH:$GOPATH/bin
+        mode: '0644'
+
+    - name: Verificar Go
+      command: /usr/local/go/bin/go version
+      register: go_version_out
+      changed_when: false
+
+    - name: Mostrar versión de Go
+      debug:
+        msg: "{{ go_version_out.stdout }}"
+
+    - name: Agregar repo NodeSource 22.x
+      shell: |
+        curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+      args:
+        creates: /etc/apt/sources.list.d/nodesource.list
+
+    - name: Instalar Node.js
+      apt:
+        name: nodejs
+        state: present
+        update_cache: yes
+
+    - name: Verificar Node.js
+      command: node --version
+      register: node_version_out
+      changed_when: false
+
+    - name: Mostrar versión de Node.js
+      debug:
+        msg: "{{ node_version_out.stdout }}"
